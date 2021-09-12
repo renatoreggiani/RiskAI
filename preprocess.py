@@ -22,11 +22,13 @@ df = df.merge(get_fred(series_fred), how='left', on='year_week').ffill()
 df = df.merge(get_quandl("ML/EMCBI"), how='left', on='year_week').ffill()
 
 # discutir sobre quais pontos pegar da curva abaixo
-df = df.merge(get_quandl('USTREASURY/HQMYC', curve_diff=('10.0', '20.0')), 
+df = df.merge(get_quandl('USTREASURY/HQMYC', curve_diff=('10.0', '20.0')),
               how='left', on='year_week').ffill()
 
+df = df.merge(get_quandl('USTREASURY/YIELD', curve_diff=('10 YR', '20 YR')),
+              how='left', on='year_week').ffill()
 
-get_quandl('USTREASURY/REALYIELD')
+df2 = get_quandl('USTREASURY/REALYIELD')['10 YR']
 
 df.dropna(inplace=True)
 
