@@ -10,6 +10,7 @@ import numpy as np
 
 from captura import get_acwi, get_fred, get_pmi_us_classified, get_quandl
 
+
 #%% Captura dos dados
 
 series_fred = ['FEDFUNDS', 'CPALTT01USM657N', 'VIXCLS', 'DGS10', 'AAA10Y',
@@ -28,12 +29,6 @@ df = df.merge(get_quandl('USTREASURY/HQMYC', curve_diff=('10.0', '20.0')),
 df = df.merge(get_quandl('USTREASURY/YIELD', curve_diff=('10 YR', '20 YR')),
               how='left', on='year_week').ffill()
 
-df2 = get_quandl('USTREASURY/REALYIELD')['10 YR']
-
-df.dropna(inplace=True)
-
-
-
 #%%
 
 df_gsrai = pd.read_csv('dados/GSRAII.csv', parse_dates=['Date']).sort_values('Date')
@@ -41,15 +36,9 @@ df_gsrai['year_week'] = df_gsrai['Date'].dt.strftime('%Y-%U')
 df_gsrai = df_gsrai.groupby('year_week').agg('last')
 df_gsrai.drop(columns='Date', inplace=True)
 
-
-df_gsrai['GSRAII Index'].plot()
-
 df = df.merge(df_gsrai, how='left', on='year_week').ffill()
 
-# correlação desafada entre pontos da curva e difereça dos pontos
-curvas = get_quandl('USTREASURY/HQMYC')
-
-
+df.dropna(inplace=True)
 
 #%%
 
@@ -62,11 +51,4 @@ df_model.dropna(inplace=True)
 X = df_model['category'].values
 y = df_model.drop(columns='category').values
 
-print( 'Shape df_model:', df_model.shape,
-'Shape X:', X.shape,
-'Shape y:',y.shape,
-sep='\n')
-
-df_model.plot()
-
-# excluir PMI stardard scale
+df_model['GSRAII Index'].std()
