@@ -16,6 +16,7 @@ series_fred = ['FEDFUNDS', 'CPALTT01USM657N', 'VIXCLS', 'DGS10', 'AAA10Y',
                'BAMLH0A0HYM2EY', 'GEPUCURRENT',  'DGS3MO']
 
 df = get_acwi()
+
 df = df.merge(get_pmi_us_classified(), how='left', on='year_week').ffill()
 df = df.merge(get_fred(series_fred), how='left', on='year_week').ffill()
 df = df.merge(get_quandl("ML/EMCBI"), how='left', on='year_week').ffill()
@@ -33,23 +34,26 @@ df.dropna(inplace=True)
 
 #%%
 
-df_gsrai = pd.read_csv('dados/GS RAI.csv', dayfirst=True, ).sort_values('Date')
-df = df_acwi.groupby('year_week').agg('last').reset_index()
-df_gsrai.plot()
+df_gsrai = pd.read_csv('dados/GSRAII.csv', parse_dates=['Date']).sort_values('Date')
+df_gsrai['year_week'] = df_gsrai['Date'].dt.strftime('%Y-%U')
+df_gsrai = df_gsrai.groupby('year_week').agg('last')
+df_gsrai.drop(columns='Date', inplace=True)
 
+
+df_gsrai['GSRAII Index'].plot()
+
+df = df.merge(df_gsrai, how='left', on='year_week').ffill()
 
 # correlação desafada entre pontos da curva e difereça dos pontos
 curvas = get_quandl('USTREASURY/HQMYC')
 
 
-df_corr = df_model.corr()
 
 #%%
 
 df_model = df.copy()
-df_model.drop(columns=['year_week'], inplace=True)
 
-df_model['category'] = np.where(df_model['acwi_log_diff'] < -0.01, 1, 0)
+df_model['category'] = np.where(df_model['GSRAII Index'] < -0.01, 1, 0)
 df_model['category'] = df_model['category'].shift(-1)
 df_model.dropna(inplace=True)
 
