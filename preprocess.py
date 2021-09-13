@@ -10,45 +10,55 @@ import numpy as np
 
 from captura import get_acwi, get_fred, get_pmi_us_classified, get_quandl
 
-
 #%% Captura dos dados
 
-series_fred = ['FEDFUNDS', 'CPALTT01USM657N', 'VIXCLS', 'DGS10', 'AAA10Y',
-               'BAMLH0A0HYM2EY', 'GEPUCURRENT',  'DGS3MO']
+def get_datas(return_df=False, scaler=False):
+    series_fred = ['FEDFUNDS', 'CPALTT01USM657N', 'VIXCLS', 'DGS10', 'AAA10Y',
+                   'BAMLH0A0HYM2EY', 'GEPUCURRENT',  'DGS3MO']
+    df_fred = get_fred(series_fred)
+    df_acwi = get_acwi()
+    df_pmi = get_pmi_us_classified()
+    df_quandl = pd.concat([
+        get_quandl("ML/EMCBI"),
+        get_quandl('USTREASURY/HQMYC', curve_diff=('10.0', '20.0')),
+        get_quandl('USTREASURY/YIELD', curve_diff=('10 YR', '20 YR')),
+        ], join='outer', axis=1)
 
-df = get_acwi()
+    df_gsrai = pd.read_csv('dados/GSRAII.csv', parse_dates=['Date']).sort_values('Date')
+    df_gsrai['year_week'] = df_gsrai['Date'].dt.strftime('%Y-%U')
+    df_gsrai = df_gsrai.groupby('year_week').agg('last')
+    df_gsrai.drop(columns='Date', inplace=True)
+    df_gsrai['category'] = np.where(df_gsrai['GSRAII Index'] < -0.01, 1, 0)
+    df_gsrai['category'] = df_gsrai['category'].shift(-1)
 
-df = df.merge(get_pmi_us_classified(), how='left', on='year_week').ffill()
-df = df.merge(get_fred(series_fred), how='left', on='year_week').ffill()
-df = df.merge(get_quandl("ML/EMCBI"), how='left', on='year_week').ffill()
+    df = pd.concat(
+    [df_gsrai[['category', 'GSRAII Index']], df_fred, df_acwi, df_pmi, df_quandl ]
+    , join='outer', axis=1).sort_index()
 
-# discutir sobre quais pontos pegar da curva abaixo
-df = df.merge(get_quandl('USTREASURY/HQMYC', curve_diff=('10.0', '20.0')),
-              how='left', on='year_week').ffill()
+    df = df.ffill().dropna()
 
-df = df.merge(get_quandl('USTREASURY/YIELD', curve_diff=('10 YR', '20 YR')),
-              how='left', on='year_week').ffill()
+    if return_df:
+        return df
 
-#%%
+    X = df.drop(columns='category').values
+    y = df['category'].values
 
-df_gsrai = pd.read_csv('dados/GSRAII.csv', parse_dates=['Date']).sort_values('Date')
-df_gsrai['year_week'] = df_gsrai['Date'].dt.strftime('%Y-%U')
-df_gsrai = df_gsrai.groupby('year_week').agg('last')
-df_gsrai.drop(columns='Date', inplace=True)
+    if scaler:
+        scaler.fit(X)
+        X = scaler.transform(X)
 
-df = df.merge(df_gsrai, how='left', on='year_week').ffill()
+    return X, y
+        #%%
+if __name__ == '__main__':
 
-df.dropna(inplace=True)
+    from sklearn.preprocessing import MinMaxScaler
 
-#%%
+    df_model = get_datas(return_df=True)
 
-df_model = df.copy()
 
-df_model['category'] = np.where(df_model['GSRAII Index'] < -0.01, 1, 0)
-df_model['category'] = df_model['category'].shift(-1)
-df_model.dropna(inplace=True)
+    X, y = get_datas(scaler=MinMaxScaler())
 
-X = df_model['category'].values
-y = df_model.drop(columns='category').values
 
-df_model['GSRAII Index'].std()
+    scaler=MinMaxScaler()
+    scaler.fit(df_model.drop(columns='category'))
+    scaler.transform(df_model.drop(columns='category'))

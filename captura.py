@@ -10,7 +10,7 @@ import quandl
 """# Captura e tratamento dos dados"""
 
 def get_acwi():
-    
+
     try:
         df = pd.read_csv('dados/ACWI.csv', index_col='year_week')
         return df
@@ -18,18 +18,18 @@ def get_acwi():
         url_acwi = 'https://app2.msci.com/products/service/index/indexmaster/downloadLevelData?output=INDEX_LEVELS&currency_symbol=USD&index_variant=STRD&start_date=19970101&end_date=20210810&data_frequency=DAILY&baseValue=false&index_codes=892400'
         df = pd.read_excel(url_acwi, skiprows=6).dropna()
         df['Date'] = pd.to_datetime(df['Date'], errors='coerce', format='%b %d, %Y')
-    
+
         df.rename(columns={df.columns[1]: df.columns[1].split()[0].lower()}, inplace=True)
         df['year_week'] = df['Date'].dt.strftime('%Y-%U')
         df.dropna(inplace=True)
         df.sort_values('Date', inplace=True)
         df = df.groupby('year_week').agg('last').reset_index()
-    
+
         # df['acwi_pct_change'] = df['acwi'].pct_change()
         df['acwi_log_diff'] = np.log(df['acwi']/df['acwi'].shift(1))
         df = df.drop(columns=['Date', 'acwi']).set_index('year_week')
         df.to_csv('dados\ACWI.csv')
-        
+
         return df
 
 
@@ -63,8 +63,8 @@ def get_fred(ticker):
 
 
 def get_quandl(id_quandl, curve_diff=None):
-    df = quandl.get(id_quandl, authtoken="Mw-vW_dxkPHHfjxjAQsF").sort_index()
-    
+    df = quandl.get(id_quandl, authtoken="Mw-vW_dxkPHHfjxjAQsF", start_date='1996-01-01').sort_index()
+
     if curve_diff:
         if len(curve_diff) == 2:
             col_name = f'{id_quandl}: {"-".join(curve_diff)}'
@@ -72,7 +72,7 @@ def get_quandl(id_quandl, curve_diff=None):
             df = df[[col_name]]
         else:
             raise 'Diferença deve ser calculada com 2 pontos'
-            
+
     df['year_week'] = df.index.strftime('%Y-%U')
     df = df.groupby('year_week').agg('last')#.reset_index()
 
