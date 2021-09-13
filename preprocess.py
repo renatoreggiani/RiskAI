@@ -38,22 +38,28 @@ def get_datas(return_df=False, scaler=False):
     df = df.ffill().dropna()
 
     if return_df:
+        if scaler:
+            scaler.fit(df)
+            df_scale = pd.DataFrame(scaler.fit_transform(df.values), columns=df.columns, index=df.index)
+            df_scale['category'] = df['category']
+            df = df_scale
         return df
 
-    X = df.drop(columns='category').values
-    y = df['category'].values
+    else:
+        X = df.drop(columns='category').values
+        y = df['category'].values
 
-    if scaler:
-        scaler.fit(X)
-        X = scaler.transform(X)
+        if scaler:
+            scaler.fit(X)
+            X = scaler.fit_transform(X)
 
-    return X, y
+        return X, y
         #%%
 if __name__ == '__main__':
 
     from sklearn.preprocessing import MinMaxScaler
 
-    df_model = get_datas(return_df=True)
+    df_model = get_datas(return_df=True, scaler=MinMaxScaler())
 
 
     X, y = get_datas(scaler=MinMaxScaler())
