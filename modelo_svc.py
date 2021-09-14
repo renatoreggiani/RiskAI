@@ -13,7 +13,6 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.svm import SVC
 
 from preprocess import get_datas
-import numpy as np
 
 
 #%%
