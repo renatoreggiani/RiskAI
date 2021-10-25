@@ -47,10 +47,6 @@ df_gp['GSRAII Index shift'] = df_gp['GSRAII Index'].shift(1).values
 
 # ----CATEGORIAS-----
 df_gp['category'] = np.where(df_gp['pct_ret'] <= -1.98, 1, 0)
-# df_gp['category'] = np.where(df_gp['pct_gsraii']<=-0.1, 1, 0)
-# df_gp['category'] = np.where((df_gp['pct_gsraii']<=-.0) & (df_gp['GSRAII Index']<=-2.0), 1, 0)
-
-
 
 df_gp['category'].value_counts()
 
