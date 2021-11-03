@@ -26,23 +26,6 @@ from preprocess import get_datas
 
 
 #%%
-def get_portfolio(indice='portfolio'):
-    if indice=='portfolio':
-        df = pd.read_csv('dados/retorno_portfolio.csv', parse_dates=['Date'])
-        df.fillna(0, inplace=True)
-    if indice=='ACWI':    
-        df = pd.read_csv('dados/retorno_portfolio.csv', parse_dates=['Date'])
-        df.fillna(0, inplace=True)
-        df['retorno'] = df['ACWI']
-        
-    df['year_week'] = df['Date'].dt.strftime('%Y-%U')
-    df['retorno acumulado'] = df['retorno'] + 1
-    df['retorno acumulado'] = df['retorno acumulado'].cumprod()
-    
-    df_gsrai = pd.read_csv('dados/GSRAII.csv', parse_dates=['Date']).sort_values('Date')
-
-    df = df.merge(df_gsrai, on='Date')
-    return df[['Date', 'retorno acumulado', 'GSRAII Index', 'year_week']].dropna()
 
 def classe_gsrai(df, limit=0, media_movel=3):
     
@@ -62,53 +45,14 @@ def classe_gsrai(df, limit=0, media_movel=3):
     return df.dropna()
 
 #%% Semanal
-df = get_portfolio()
-df_gp = df.groupby('year_week').agg('last')
-
-# for pct in range(1,6):
-#     df_gp[f'pct_{pct}_sem'] = (df_gp['retorno acumulado']/df_gp['retorno acumulado'].shift(pct).values -1) * 100
-   
     
-for pct in range(1,6):
-    df_gp[f'pct_{pct}_sem'] = (df_gp['retorno acumulado'].shift(pct*-1).values/
-                               df_gp['retorno acumulado'] -1) * 100
+# df_gp =  classe_gsrai(df=df_gp, limit=0, media_movel=3)
     
-    
-df_gp =  classe_gsrai(df=df_gp, limit=0, media_movel=3)
-    
-df = get_datas(return_df=True)
+df = get_datas(return_df=True, diff_gsrai=-0.2)
 
-
-df_all = df_gp.merge(df, right_index=True, left_index=True)
-
-# 'pct_1_sem', 'pct_2_sem', 'pct_3_sem', 'pct_4_sem', 'pct_5_sem',
-pct = 'pct_1_sem'
-mean = df_all[df_all[pct]<0][pct].mean()
-df_all['category'] = np.where(df_all[pct] < mean, 1, 0)
-df_all['category'] = df_all['category'].shift(-1).values
-df_all['pct_1_sem_lag'] = df_all['pct_1_sem'].shift(1)
-
-
-v = df_all[['category', 'retorno acumulado', 'pct_1_sem', 'pct_1_sem_lag', 'pct_2_sem',
-            'pct_3_sem', 'pct_4_sem', 'pct_5_sem']]
-
-#%%
-
-df_model = df_all[[ 'category', 'pct_1_sem_lag', 'GSRAII Index_x', 
-               'gsrai_gt_up', 'gsrai_gt_down', 'gsrai_lt_up', 'gsrai_lt_down', 
-               'FEDFUNDS', 'CPALTT01USM657N', 'VIXCLS', 'DGS10',
-               'AAA10Y', 'BAMLH0A0HYM2EY', 'GEPUCURRENT', 'DGS3MO', 'acwi_log_diff',
-               'pmi_us_gt_50_up', 'pmi_us_gt_50_down', 'pmi_us_lt_50_up',
-               'pmi_us_lt_50_down', 'BAMLEMCBPIOAS', 'USTREASURY/HQMYC: 10.0-20.0',
-               'USTREASURY/YIELD: 10 YR-20 YR']].dropna()
-
-
-y = df_model['category'].values
-X = df_model.drop(columns=['category']).values
 scaler = MinMaxScaler()
-scaler.fit(X)
-X = scaler.transform(X)
 
+X, y = get_datas(scaler=scaler)
 
 #%% Funções e seed para os modelos
 
@@ -136,7 +80,7 @@ def valid(model, X, y):
   
 def hp_tunning(model, params, random_state=SEED, n_iter=N_ITER, cv=ss):
   print(f'Testando hiperparametros para {str(model).split("(")[0]}' )
-  clf = RandomizedSearchCV(model, params, random_state=random_state, scoring='balanced_accuracy',
+  clf = RandomizedSearchCV(model, params, random_state=random_state, scoring='neg_log_loss',
                            n_iter=n_iter, cv=cv, n_jobs=-1, verbose=1)
   rsearch = clf.fit(X, y)
   df_rs = pd.DataFrame(rsearch.cv_results_)
@@ -196,7 +140,7 @@ params_svc = {
     'class_weight':[class_weight]
     }
 
-svc = SVC(random_state=SEED)
+svc = SVC(random_state=SEED, probability=True)
 best_params_svc, df_rs_svc = hp_tunning(svc, params_svc)
 
 df_rs_svc.head()
@@ -341,34 +285,34 @@ df_default_mlp
 #%% AUTO ML
 
 
-import h2o
-from h2o.automl import H2OAutoML
+# import h2o
+# from h2o.automl import H2OAutoML
 
-df_model.to_csv('dados_automl.csv', index=False)
+# df_model.to_csv('dados_automl.csv', index=False)
 
 
-h2o.init()
+# h2o.init()
 
-train = h2o.import_file("dados_automl.csv")
-# test = h2o.import_file("dados_automl.csv")
+# train = h2o.import_file("dados_automl.csv")
+# # test = h2o.import_file("dados_automl.csv")
 
-# Identify predictors and response
-x = train.columns
-y = "category"
-# x.remove(y)
+# # Identify predictors and response
+# x = train.columns
+# y = "category"
+# # x.remove(y)
 
-# For binary classification, response should be a factor
-train[y] = train[y].asfactor()
-# test[y] = test[y].asfactor()
+# # For binary classification, response should be a factor
+# train[y] = train[y].asfactor()
+# # test[y] = test[y].asfactor()
 
-# Run AutoML for 20 base models
-aml = H2OAutoML(max_models=50, seed=1,
-                balance_classes=True,
-                sort_metric='logloss'
-                )
-aml.train(x=x, y=y, training_frame=train, )
+# # Run AutoML for 20 base models
+# aml = H2OAutoML(max_models=50, seed=1,
+#                 balance_classes=True,
+#                 sort_metric='logloss'
+#                 )
+# aml.train(x=x, y=y, training_frame=train, )
 
-# View the AutoML Leaderboard
-lb = aml.leaderboard
-lb.head(rows=10)  # Print all rows instead of default (10 rows)
+# # View the AutoML Leaderboard
+# lb = aml.leaderboard
+# lb.head(rows=10)  # Print all rows instead of default (10 rows)
 

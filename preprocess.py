@@ -12,7 +12,7 @@ from captura import get_acwi, get_fred, get_pmi_us_classified, get_quandl
 
 #%% Captura dos dados
 
-def get_datas(return_df=False, scaler=False):
+def get_datas(return_df=False, scaler=False, diff_gsrai=0):
     series_fred = ['FEDFUNDS', 'CPALTT01USM657N', 'VIXCLS', 'DGS10', 'AAA10Y',
                    'BAMLH0A0HYM2EY', 'GEPUCURRENT',  'DGS3MO']
     df_fred = get_fred(series_fred)
@@ -28,11 +28,13 @@ def get_datas(return_df=False, scaler=False):
     df_gsrai['year_week'] = df_gsrai['Date'].dt.strftime('%Y-%U')
     df_gsrai = df_gsrai.groupby('year_week').agg('last')
     df_gsrai.drop(columns='Date', inplace=True)
-    df_gsrai['category'] = np.where(df_gsrai['GSRAII Index'] < -0.01, 1, 0)
+    df_gsrai['GSRAII_diff'] = df_gsrai['GSRAII Index'].diff()
+    
+    df_gsrai['category'] = np.where(df_gsrai['GSRAII_diff'] < diff_gsrai, 1, 0)
     df_gsrai['category'] = df_gsrai['category'].shift(-1)
 
     df = pd.concat(
-    [df_gsrai[['category', 'GSRAII Index']], df_fred, df_acwi, df_pmi, df_quandl ]
+    [df_gsrai[['category', 'GSRAII Index', 'GSRAII_diff']], df_fred, df_acwi, df_pmi, df_quandl ]
     , join='outer', axis=1).sort_index()
 
     df = df.ffill().dropna()
