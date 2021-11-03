@@ -282,6 +282,14 @@ mlp.fit(X, y)
 
 df_default_mlp
 
+#%% GaussianProcessClassifier
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
+
+kernel = 1.0 * RBF(1.0)
+gpc = GaussianProcessClassifier(kernel=kernel, random_state=0)
+df_default_gcp = valid(gcp, X, y)
+
 #%% AUTO ML
 
 
