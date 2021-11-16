@@ -22,7 +22,7 @@ df.fillna(0, inplace=True)
 df_gsrai = pd.read_csv('dados/GSRAII.csv', parse_dates=['Date']).sort_values('Date')
 
 df = df.merge(df_gsrai, on='Date')
-df['retorno'] = df['retorno'] #ACWI
+df['retorno'] = df['retorno']
 df['retorno acumulado'] = df['retorno'] + 1
 df['retorno acumulado'] = df['retorno acumulado'].cumprod()
 

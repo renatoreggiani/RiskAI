@@ -14,7 +14,7 @@ Original file is located at
 import pandas as pd
 import numpy as np
 
-from sklearn.model_selection import cross_val_score 
+from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.preprocessing import MinMaxScaler
@@ -25,48 +25,28 @@ from sklearn.linear_model import SGDClassifier, LogisticRegression
 from preprocess import get_datas
 
 
-#%%
-
-def classe_gsrai(df, limit=0, media_movel=3):
-    
-    df=df.copy()
-    df['mean'] = df['GSRAII Index'].rolling(media_movel).mean()
-    up_down = df['mean']
-
-    df['gsrai_gt_up'] = np.where((df['GSRAII Index'] > up_down) & (df['GSRAII Index'] >= limit), 1, 0)
-    df['gsrai_gt_down'] = np.where((df['GSRAII Index'] < up_down) & (df['GSRAII Index'] >= limit), 1, 0)
-    df['gsrai_lt_up'] = np.where((df['GSRAII Index'] > up_down) & (df['GSRAII Index'] < limit), 1, 0)
-    df['gsrai_lt_down'] = np.where((df['GSRAII Index'] < up_down) & (df['GSRAII Index'] < limit), 1, 0)
-
-    regras = ['gsrai_gt_up', 'gsrai_gt_down', 'gsrai_lt_up', 'gsrai_lt_down']
-    df['classe'] = np.nan
-    for col in regras:
-        df.loc[df[col]==1, 'classe'] = col
-    return df.dropna()
-
 #%% Semanal
-    
+
 # df_gp =  classe_gsrai(df=df_gp, limit=0, media_movel=3)
-    
-df = get_datas(return_df=True, diff_gsrai=-0.2)
 
+df = get_datas(return_df=True, diff_gsrai=-0.)
 scaler = MinMaxScaler()
+X, y = get_datas(scaler=scaler, diff_gsrai=-0.10)
 
-X, y = get_datas(scaler=scaler)
+class_weight = {1: y[y == 0].size / y.size,
+                0: y[y == 1].size / y.size}
 
 #%% Funções e seed para os modelos
 
-class_weight = {1: y[y == 0].size / y.size,
-                0: y[y == 1].size / y.size} 
 
 SEED = 51
-N_ITER =  200   
+N_ITER =  100
 N_SPLITS = 25
-ss = StratifiedShuffleSplit(n_splits=N_SPLITS, test_size=0.2, random_state=SEED)
+ss = StratifiedShuffleSplit(n_splits=N_SPLITS, test_size=0.25, random_state=SEED)
 
-def valid(model, X, y):
+def valid(model, X, y, scoring='balanced_accuracy'):
   ss_valid = StratifiedShuffleSplit(n_splits=N_SPLITS, test_size=0.2, random_state=666)
-  scores = cross_val_score(model, X, y, scoring='balanced_accuracy', cv=ss_valid, n_jobs=-1)
+  scores = cross_val_score(model, X, y, scoring=scoring, cv=ss_valid, n_jobs=-1)
   results = {
       'Modelo': str(model).split('(')[0],
       'Media': scores.mean(),
@@ -77,11 +57,11 @@ def valid(model, X, y):
   }
   return pd.DataFrame([results])
 
-  
+
 def hp_tunning(model, params, random_state=SEED, n_iter=N_ITER, cv=ss):
   print(f'Testando hiperparametros para {str(model).split("(")[0]}' )
   clf = RandomizedSearchCV(model, params, random_state=random_state, scoring='neg_log_loss',
-                           n_iter=n_iter, cv=cv, n_jobs=-1, verbose=1)
+                           n_iter=n_iter, cv=cv, n_jobs=4, verbose=1)
   rsearch = clf.fit(X, y)
   df_rs = pd.DataFrame(rsearch.cv_results_)
   df_rs = df_rs[[col for col in df_rs.columns if not col.startswith('split')]].sort_values('rank_test_score')
@@ -102,7 +82,7 @@ params_sgd = {
     'loss':['hinge', 'log', 'modified_huber'],
     'penalty':['l2', 'l1', 'elasticnet'],
     'alpha':[1e-4, 1e-3, 1e-2],
-    'max_iter':range(15000, 19001, 1000), 
+    'max_iter':range(15000, 19001, 1000),
     'n_iter_no_change': range(10, 21, 2),
     'class_weight':[class_weight]
     }
@@ -115,7 +95,7 @@ df_rs_sgd.head()
 ### Melhor SGDClassifier
 
 
-best_params_sgd 
+best_params_sgd
 # {'alpha': 0.001, 'average': False, 'class_weight': {1: 0.7574698333652558, 0: 0.2425301666347443}, 'early_stopping': False, 'epsilon': 0.1, 'eta0': 0.0, 'fit_intercept': True, 'l1_ratio': 0.15, 'learning_rate': 'optimal', 'loss': 'log', 'max_iter': 6000, 'n_iter_no_change': 16, 'n_jobs': None, 'penalty': 'l2', 'power_t': 0.5, 'random_state': None, 'shuffle': True, 'tol': 0.001, 'validation_fraction': 0.1, 'verbose': 0, 'warm_start': False}
 
 best_sgd = SGDClassifier(**best_params_sgd)
@@ -149,15 +129,18 @@ df_rs_svc.head()
 
 
 
-best_params_svc  
+best_params_svc
 # {'C': 40, 'break_ties': False, 'cache_size': 200, 'class_weight': {1: 0.7574698333652558, 0: 0.2425301666347443}, 'coef0': 0.0, 'decision_function_shape': 'ovr', 'degree': 7, 'gamma': 'auto', 'kernel': 'rbf', 'max_iter': 10000, 'probability': False, 'random_state': None, 'shrinking': True, 'tol': 0.001, 'verbose': False}
 
 
-df_best_svc = valid(SVC(**best_params_svc), X,y)
+df_best_svc = valid(SVC(**best_params_svc, probability=True), X,y)
 df_best_svc
 
 
 df_default_svc
+
+
+
 
 
 
@@ -172,10 +155,10 @@ df_default_rfc
 
 params_rfc = {
     'n_estimators':range(80, 161, 10),
-    'criterion':['gini', 'entropy'], 
-    'max_depth':range(20, 60, 3), 
-    'min_samples_split':range(20, 41, 2), 
-    'min_samples_leaf':range(45, 55, 2), 
+    'criterion':['gini', 'entropy'],
+    'max_depth':range(20, 60, 3),
+    'min_samples_split':range(20, 41, 2),
+    'min_samples_leaf':range(45, 55, 2),
     'max_features':['log2', 'auto'],
     'class_weight':[class_weight]
     }
@@ -189,7 +172,7 @@ df_rs_rfc.head()
 
 
 
-best_params_rfc 
+best_params_rfc
 # {'bootstrap': True, 'ccp_alpha': 0.0, 'class_weight': {1: 0.7574698333652558, 0: 0.2425301666347443}, 'criterion': 'entropy', 'max_depth': 23, 'max_features': 'auto', 'max_leaf_nodes': None, 'max_samples': None, 'min_impurity_decrease': 0.0, 'min_impurity_split': None, 'min_samples_leaf': 51, 'min_samples_split': 24, 'min_weight_fraction_leaf': 0.0, 'n_estimators': 120, 'n_jobs': None, 'oob_score': False, 'random_state': 51, 'verbose': 0, 'warm_start': False}
 
 
@@ -201,6 +184,21 @@ df_best_rfc
 rfc.fit(X, y)
 
 df_default_rfc
+
+
+
+# Importancia das variaveis
+import matplotlib.pyplot as plt
+importances = rfc.feature_importances_
+std = np.std([tree.feature_importances_ for tree in rfc.estimators_], axis=0)
+
+forest_importances = pd.Series(importances, index=df.drop(columns='category').columns)
+
+fig, ax = plt.subplots()
+forest_importances.plot.bar(yerr=std, ax=ax)
+ax.set_title("Feature importances using MDI")
+ax.set_ylabel("Mean decrease in impurity")
+fig.tight_layout()
 
 #%% Logistic Regression
 
@@ -220,7 +218,7 @@ params_logr = {
     'solver': ['liblinear', 'newton-cg', 'lbfgs', 'sag', 'saga'],
     # 'penalty':['l2'],
     'C': range(100, 301, 5),
-    'max_iter':range(500, 2001, 100), 
+    'max_iter':range(500, 2001, 100),
     'class_weight':[class_weight]
     }
 
@@ -233,7 +231,7 @@ df_rs_logr.head()
 ### Melhor LOGR
 
 
-best_params_logr 
+best_params_logr
 
 
 logr = LogisticRegression(**best_params_logr, random_state=SEED)
@@ -258,8 +256,8 @@ df_default_mlp = valid(mlp, X, y)
 params_mlp = {
     'activation' : ['identity', 'logistic', 'tanh', 'relu'],
     'hidden_layer_sizes': [(15,), (20, 20), (15, 15, 30, 15), (5, 50)],
-    'learning_rate_init': [0.0001, 0.001, 0.01], 
-    'max_iter':range(5000, 9001, 1000), 
+    'learning_rate_init': [0.0001, 0.001, 0.01],
+    'max_iter':range(5000, 9001, 1000),
     }
 
 
@@ -271,7 +269,7 @@ df_rs_mlp.head()
 ### Melhor mlp
 
 
-best_params_mlp 
+best_params_mlp
 
 
 mlp = MLPClassifier(**best_params_mlp, random_state=SEED)
@@ -288,7 +286,7 @@ from sklearn.gaussian_process.kernels import RBF
 
 kernel = 1.0 * RBF(1.0)
 gpc = GaussianProcessClassifier(kernel=kernel, random_state=0)
-df_default_gcp = valid(gcp, X, y)
+df_default_gcp = valid(gpc, X, y)
 
 #%% AUTO ML
 
