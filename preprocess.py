@@ -8,7 +8,7 @@ Created on Mon Sep  6 22:13:19 2021
 import pandas as pd
 import numpy as np
 
-from captura import get_acwi, get_fred, get_pmi_us_classified, get_quandl
+from captura import get_acwi, get_fred, get_pmi_us_classified, get_quandl, get_sp500
 
 #%% Captura dos dados
 
@@ -31,6 +31,10 @@ def get_gsrai(up_down=0, diff_gsrai=0, limit=0, periods=1):
 
     df = pd.read_csv('dados/GSRAII.csv', parse_dates=['Date']).sort_values('Date')
     df['year_week'] = df['Date'].dt.strftime('%Y-%U')
+    # add indicadores
+    df['150 std gsraii'] = df['GSRAII Index'].rolling(150).std()
+    df['21 std gsraii'] = df['GSRAII Index'].rolling(21).std()
+
     df = df.groupby('year_week').agg('last')
     df.drop(columns='Date', inplace=True)
     df['GSRAII_diff'] = df['GSRAII Index'].diff(periods)
@@ -41,29 +45,48 @@ def get_gsrai(up_down=0, diff_gsrai=0, limit=0, periods=1):
     return df
 
 
+def prep_index(df, name, set_log_diff=True):
+
+    df.sort_values('Date', inplace=True)
+    for d in [21, 150]:
+        df[f'std_{d}_{name}'] = df[f'{name}'].rolling(d).std()
+
+    df['year_week'] = df['Date'].dt.strftime('%Y-%U')
+    df = df.groupby('year_week').agg('last').reset_index()
+    df = df.drop(columns=['Date']).set_index('year_week')
+
+    if set_log_diff:
+        df[f'{name}_log_diff'] = np.log(df[f'{name}']/df[f'{name}'].shift(1))
+        df.drop(columns=[f'{name}'], inplace=True)
+
+    df.dropna(inplace=True)
+
+    return df
+
+
 def get_datas(return_df=False, scaler=False, diff_gsrai=0, periods=1):
 
     try:
         df = pd.read_csv('dados/Capturas.csv', index_col='year_week')
-
     except FileNotFoundError:
         series_fred = ['FEDFUNDS', 'CPALTT01USM657N', 'VIXCLS', 'DGS10', 'AAA10Y',
-                       'BAMLH0A0HYM2EY', 'GEPUCURRENT',  'DGS3MO']
+                       'BAMLH0A0HYM2EY', 'GEPUCURRENT',  'DGS3MO', 'VXDCLS']
         df_fred = get_fred(series_fred)
-        df_acwi = get_acwi()
+        df_acwi = prep_index(get_acwi(), 'acwi')
+        # df_sp500 = prep_index(get_sp500(), 'SP500')
         df_pmi = get_pmi_us_classified()
         df_quandl = pd.concat([
             get_quandl("ML/EMCBI"),
             get_quandl('USTREASURY/HQMYC', curve_diff=('10.0', '20.0')),
             get_quandl('USTREASURY/YIELD', curve_diff=('10 YR', '20 YR')),
             ], join='outer', axis=1)
-        df = pd.concat([df_fred, df_acwi, df_pmi, df_quandl],
+        df = pd.concat([df_fred, df_acwi, df_pmi, df_quandl, ],
                        join='outer', axis=1).sort_index()
         df.to_csv('dados/Capturas.csv')
 
     df_gsrai = get_gsrai(diff_gsrai=diff_gsrai, periods=periods)
     # Unifica capturas
-    df = pd.concat([df, df_gsrai[['GSRAII Index', 'GSRAII_diff', 'category']] ],
+    df = pd.concat([df, df_gsrai],
                    join='outer', axis=1).sort_index()
     df = df.ffill().dropna()
 

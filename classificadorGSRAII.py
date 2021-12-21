@@ -21,6 +21,8 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import SGDClassifier, LogisticRegression
+from sklearn.decomposition import PCA
+from sklearn.pipeline import Pipeline
 
 from preprocess import get_datas
 
@@ -28,16 +30,18 @@ from preprocess import get_datas
 #%% Semanal
 
 # df_gp =  classe_gsrai(df=df_gp, limit=0, media_movel=3)
+diff_gsrai=-0.1
 
-df = get_datas(return_df=True, diff_gsrai=-0.)
+df = get_datas(return_df=True, diff_gsrai=diff_gsrai)
+
 scaler = MinMaxScaler()
-X, y = get_datas(scaler=scaler, diff_gsrai=-0.10)
+X, y = get_datas(scaler=scaler, diff_gsrai=diff_gsrai)
 
 class_weight = {1: y[y == 0].size / y.size,
                 0: y[y == 1].size / y.size}
 
-#%% Funções e seed para os modelos
 
+#%% Funções e seed para os modelos
 
 SEED = 51
 N_ITER =  100
@@ -45,28 +49,96 @@ N_SPLITS = 25
 ss = StratifiedShuffleSplit(n_splits=N_SPLITS, test_size=0.25, random_state=SEED)
 
 def valid(model, X, y, scoring='balanced_accuracy'):
-  ss_valid = StratifiedShuffleSplit(n_splits=N_SPLITS, test_size=0.2, random_state=666)
-  scores = cross_val_score(model, X, y, scoring=scoring, cv=ss_valid, n_jobs=-1)
-  results = {
-      'Modelo': str(model).split('(')[0],
-      'Media': scores.mean(),
-      'std': scores.std(),
-      'Pior': scores.min(),
-      'Melhor': scores.max(),
-      'Parametros': model.get_params()
-  }
-  return pd.DataFrame([results])
+    ss_valid = StratifiedShuffleSplit(n_splits=N_SPLITS, test_size=0.2, random_state=666)
+    scores = cross_val_score(model, X, y, scoring=scoring, cv=ss_valid, n_jobs=-1)
+    results = {
+        'Modelo': str(model).split('(')[0],
+        'Media': scores.mean(),
+        'std': scores.std(),
+        'Pior': scores.min(),
+        'Melhor': scores.max(),
+        'Parametros': model.get_params()
+    }
+    return pd.DataFrame([results])
 
 
 def hp_tunning(model, params, random_state=SEED, n_iter=N_ITER, cv=ss):
-  print(f'Testando hiperparametros para {str(model).split("(")[0]}' )
-  clf = RandomizedSearchCV(model, params, random_state=random_state, scoring='neg_log_loss',
-                           n_iter=n_iter, cv=cv, n_jobs=4, verbose=1)
-  rsearch = clf.fit(X, y)
-  df_rs = pd.DataFrame(rsearch.cv_results_)
-  df_rs = df_rs[[col for col in df_rs.columns if not col.startswith('split')]].sort_values('rank_test_score')
-  return rsearch.best_params_, df_rs
+    print(f'Testando hiperparametros para {str(model).split("(")[0]}' )
+    clf = RandomizedSearchCV(model, params, random_state=random_state, scoring='balanced_accuracy',
+                             n_iter=n_iter, cv=cv, n_jobs=4, verbose=1)
+    rsearch = clf.fit(X, y)
+    df_rs = pd.DataFrame(rsearch.cv_results_)
+    df_rs = df_rs[[col for col in df_rs.columns if not col.startswith('split')]].sort_values('rank_test_score')
+    return rsearch.best_params_, df_rs
 
+
+
+def ft_selec_tunning(model, params, random_state=SEED, n_iter=N_ITER, cv=ss):
+
+    param_grid = {"model__"+ k:v for k,v in params.items()}
+    # param_grid = {}
+    param_grid["pca__n_components"] = np.arange(5,24,1)
+
+    # print(f'Testando hiperparametros para {str(model).split("(")[0]}' )
+    pipe = Pipeline(steps=[("pca", PCA(svd_solver='full')), ("model", model)])
+    clf = RandomizedSearchCV(pipe, param_grid, random_state=random_state, scoring='balanced_accuracy',
+                             n_iter=n_iter, cv=cv, n_jobs=4, verbose=1)
+    rsearch = clf.fit(X, y)
+    df_rs = pd.DataFrame(rsearch.cv_results_)
+    df_rs = df_rs[[col for col in df_rs.columns if not col.startswith('split')]].sort_values('rank_test_score')
+    return rsearch.best_params_, df_rs, rsearch
+
+
+#%% Logistic Regression
+
+logr = LogisticRegression()
+df_default_logr = valid(logr, X, y)
+
+### Ajuste de hiperparametros
+    # 'newton-cg' - ['l2', 'none']
+    # 'lbfgs' - ['l2', 'none']
+    # 'liblinear' - ['l1', 'l2']
+    # 'sag' - ['l2', 'none']
+    # 'saga' - ['elasticnet', 'l1', 'l2', 'none']
+
+params_logr = {
+    'solver': ['liblinear', 'newton-cg', 'lbfgs', 'sag', 'saga'],
+    # 'penalty':['l2'],
+    'C': range(100, 301, 5),
+    'max_iter':range(500, 2001, 100),
+    'class_weight':[class_weight]
+    }
+
+
+logr = LogisticRegression(random_state=SEED)
+best_params_logr, df_rs_logr = hp_tunning(logr, params_logr)
+
+
+p['pca'].explained_variance_ratio_
+
+best_ft_params_logr, df_ft_logr, p = ft_selec_tunning(logr, params_logr)
+
+
+
+p1 = p['pca']
+
+
+df_rs_logr.head()
+
+### Melhor LOGR
+
+best_params_logr
+
+logr = LogisticRegression(**best_params_logr, random_state=SEED)
+df_best_logr = valid(logr, X, y)
+
+
+pipe = LogisticRegression(**best_params_logr, random_state=SEED)
+df_best_logr = valid(logr, X, y)
+
+logr.fit(X, y)
+
+df_default_logr
 
 
 #%% SGDClassifier
@@ -74,7 +146,6 @@ def hp_tunning(model, params, random_state=SEED, n_iter=N_ITER, cv=ss):
 sgd = SGDClassifier(random_state=SEED)
 df_default_sgd = valid(sgd, X, y)
 df_default_sgd
-
 
 ### Ajuste de Hiperparametros
 
@@ -94,13 +165,14 @@ df_rs_sgd.head()
 
 ### Melhor SGDClassifier
 
-
 best_params_sgd
-# {'alpha': 0.001, 'average': False, 'class_weight': {1: 0.7574698333652558, 0: 0.2425301666347443}, 'early_stopping': False, 'epsilon': 0.1, 'eta0': 0.0, 'fit_intercept': True, 'l1_ratio': 0.15, 'learning_rate': 'optimal', 'loss': 'log', 'max_iter': 6000, 'n_iter_no_change': 16, 'n_jobs': None, 'penalty': 'l2', 'power_t': 0.5, 'random_state': None, 'shuffle': True, 'tol': 0.001, 'validation_fraction': 0.1, 'verbose': 0, 'warm_start': False}
 
 best_sgd = SGDClassifier(**best_params_sgd)
 df_best_sgd = valid(best_sgd, X, y)
 df_best_sgd
+
+
+
 
 
 #%% SVC
@@ -127,21 +199,13 @@ df_rs_svc.head()
 
 ### Melhor SVC
 
-
-
 best_params_svc
-# {'C': 40, 'break_ties': False, 'cache_size': 200, 'class_weight': {1: 0.7574698333652558, 0: 0.2425301666347443}, 'coef0': 0.0, 'decision_function_shape': 'ovr', 'degree': 7, 'gamma': 'auto', 'kernel': 'rbf', 'max_iter': 10000, 'probability': False, 'random_state': None, 'shrinking': True, 'tol': 0.001, 'verbose': False}
-
 
 df_best_svc = valid(SVC(**best_params_svc, probability=True), X,y)
 df_best_svc
 
 
 df_default_svc
-
-
-
-
 
 
 #%% Random forest
@@ -194,54 +258,11 @@ std = np.std([tree.feature_importances_ for tree in rfc.estimators_], axis=0)
 
 forest_importances = pd.Series(importances, index=df.drop(columns='category').columns)
 
-fig, ax = plt.subplots()
-forest_importances.plot.bar(yerr=std, ax=ax)
-ax.set_title("Feature importances using MDI")
-ax.set_ylabel("Mean decrease in impurity")
-fig.tight_layout()
-
-#%% Logistic Regression
-
-
-
-logr = LogisticRegression()
-df_default_logr = valid(logr, X, y)
-
-### Ajuste de hiperparametros
-    # 'newton-cg' - ['l2', 'none']
-    # 'lbfgs' - ['l2', 'none']
-    # 'liblinear' - ['l1', 'l2']
-    # 'sag' - ['l2', 'none']
-    # 'saga' - ['elasticnet', 'l1', 'l2', 'none']
-
-params_logr = {
-    'solver': ['liblinear', 'newton-cg', 'lbfgs', 'sag', 'saga'],
-    # 'penalty':['l2'],
-    'C': range(100, 301, 5),
-    'max_iter':range(500, 2001, 100),
-    'class_weight':[class_weight]
-    }
-
-
-logr = LogisticRegression(random_state=SEED)
-best_params_logr, df_rs_logr = hp_tunning(logr, params_logr)
-
-df_rs_logr.head()
-
-### Melhor LOGR
-
-
-best_params_logr
-
-
-logr = LogisticRegression(**best_params_logr, random_state=SEED)
-df_best_logr = valid(logr, X, y)
-df_best_logr
-
-logr.fit(X, y)
-
-df_default_logr
-
+# fig, ax = plt.subplots()
+# forest_importances.plot.bar(yerr=std, ax=ax)
+# ax.set_title("Feature importances using MDI")
+# ax.set_ylabel("Mean decrease in impurity")
+# fig.tight_layout()
 
 #%% MLPClassifier
 
@@ -284,9 +305,11 @@ df_default_mlp
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
 
-kernel = 1.0 * RBF(1.0)
-gpc = GaussianProcessClassifier(kernel=kernel, random_state=0)
+kernel = 66**2 * RBF(1.33)
+gpc = GaussianProcessClassifier(kernel=kernel, random_state=0, multi_class='one_vs_one')
 df_default_gcp = valid(gpc, X, y)
+
+
 
 #%% AUTO ML
 
