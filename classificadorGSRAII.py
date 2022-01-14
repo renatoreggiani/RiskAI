@@ -66,7 +66,7 @@ def valid(model, X, y, scoring='balanced_accuracy'):
 def hp_tunning(model, params, random_state=SEED, n_iter=N_ITER, cv=ss):
     print(f'Testando hiperparametros para {str(model).split("(")[0]}' )
     clf = RandomizedSearchCV(model, params, random_state=random_state, scoring='balanced_accuracy',
-                             n_iter=n_iter, cv=cv, n_jobs=4, verbose=1)
+                             n_iter=n_iter, cv=cv, n_jobs=-1, verbose=1)
     rsearch = clf.fit(X, y)
     df_rs = pd.DataFrame(rsearch.cv_results_)
     df_rs = df_rs[[col for col in df_rs.columns if not col.startswith('split')]].sort_values('rank_test_score')
