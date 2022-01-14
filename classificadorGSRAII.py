@@ -48,6 +48,7 @@ N_ITER =  100
 N_SPLITS = 25
 ss = StratifiedShuffleSplit(n_splits=N_SPLITS, test_size=0.25, random_state=SEED)
 
+
 def valid(model, X, y, scoring='balanced_accuracy'):
     ss_valid = StratifiedShuffleSplit(n_splits=N_SPLITS, test_size=0.2, random_state=666)
     scores = cross_val_score(model, X, y, scoring=scoring, cv=ss_valid, n_jobs=-1)
@@ -70,7 +71,6 @@ def hp_tunning(model, params, random_state=SEED, n_iter=N_ITER, cv=ss):
     df_rs = pd.DataFrame(rsearch.cv_results_)
     df_rs = df_rs[[col for col in df_rs.columns if not col.startswith('split')]].sort_values('rank_test_score')
     return rsearch.best_params_, df_rs
-
 
 
 def ft_selec_tunning(model, params, random_state=SEED, n_iter=N_ITER, cv=ss):
@@ -112,15 +112,17 @@ params_logr = {
 
 logr = LogisticRegression(random_state=SEED)
 best_params_logr, df_rs_logr = hp_tunning(logr, params_logr)
+# sem lag 0.5466
+# com lag 0.5954
 
-
-p['pca'].explained_variance_ratio_
+# p['pca'].explained_variance_ratio_
 
 best_ft_params_logr, df_ft_logr, p = ft_selec_tunning(logr, params_logr)
+# sem lag 0.5579
+# com lag 0.5968
 
 
 
-p1 = p['pca']
 
 
 df_rs_logr.head()
