@@ -23,6 +23,7 @@ from sklearn.model_selection import cross_validate
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.model_selection import ShuffleSplit
 
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
@@ -42,53 +43,21 @@ scaler = MinMaxScaler()
 
 df = get_datas(return_df=True, diff_gsrai=diff_gsrai)
 
-#df['y'] = df['GSRAII_diff'].shift(-1)
-
+# 'GSRAII Index' como variável dependente
 df['y'] = df['GSRAII Index'].shift(-1)
-
 df.dropna(inplace = True)
-
 X = df.drop(columns=['GSRAII_diff', 'category', 'y'])
+
+# 'GSRAII_diff' como variável dependente
+# df['y'] = df['GSRAII_diff'].shift(-1)
+# df.dropna(inplace = True)
+# X = df.drop(columns=['GSRAII Index', 'category', 'y'])
 
 y = df['y']
 
 scaler.fit(X)
 
 X_scale = scaler.fit_transform(X)
-
-#%%
-SEED = 51
-N_ITER =  100
-N_SPLITS = 25
-
-def valid(model, X, y):
-    ss_valid = StratifiedShuffleSplit(n_splits=N_SPLITS, test_size=0.2, random_state=SEED)
-    scores = cross_validate(LinearRegression(fit_intercept=True), X_scale, y, n_jobs=-1, scoring= ['r2'])
-    results = {
-        'Modelo': str(model).split('(')[0],
-        'Media': scores['test_r2'].mean(),
-        'std': scores['test_r2'].std(),
-        'Pior': scores['test_r2'].min(),
-        'Melhor': scores['test_r2'].max(),
-        'Parametros': model.get_params()
-    }
-    return pd.DataFrame([results])
-
-reg_sl = LinearRegression()
-
-model = valid(reg_sl, X_scale, y)
-
-#Intervalo interquartílico (outlier)
-
-
-#%%
-
-scaler = MinMaxScaler()
-X, y = get_datas(scaler=scaler, diff_gsrai=diff_gsrai)
-
-class_weight = {1: y[y == 0].size / y.size,
-                0: y[y == 1].size / y.size}
-
 
 #%% Funções e seed para os modelos
 
@@ -98,8 +67,8 @@ N_SPLITS = 25
 ss = StratifiedShuffleSplit(n_splits=N_SPLITS, test_size=0.25, random_state=SEED)
 
 
-def valid(model, X, y, scoring='balanced_accuracy'):
-    ss_valid = StratifiedShuffleSplit(n_splits=N_SPLITS, test_size=0.2, random_state=666)
+def valid(model, X, y, scoring='r2'):
+    ss_valid = ShuffleSplit(n_splits=N_SPLITS, test_size=0.2, random_state=666)
     scores = cross_val_score(model, X, y, cv=ss_valid, n_jobs=-1)
     results = {
         'Modelo': str(model).split('(')[0],
@@ -111,6 +80,7 @@ def valid(model, X, y, scoring='balanced_accuracy'):
     }
     return pd.DataFrame([results])
 
+###### Testado até aqui #########
 
 def hp_tunning(model, params, random_state=SEED, n_iter=N_ITER, cv=ss):
     print(f'Testando hiperparametros para {str(model).split("(")[0]}' )
