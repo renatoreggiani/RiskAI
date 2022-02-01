@@ -71,20 +71,6 @@ def hp_tunning(model, params, random_state=SEED, n_iter=N_ITER, cv=ss):
     return rsearch.best_params_, df_rs
 
 
-def ft_selec_tunning(model, params, random_state=SEED, n_iter=N_ITER, cv=ss):
-
-    param_grid = {"model__"+ k:v for k,v in params.items()}
-    # param_grid = {}
-    param_grid["pca__n_components"] = np.arange(5,24,1)
-
-    # print(f'Testando hiperparametros para {str(model).split("(")[0]}' )
-    pipe = Pipeline(steps=[("pca", PCA(svd_solver='full')), ("model", model)])
-    clf = RandomizedSearchCV(pipe, param_grid, random_state=random_state, scoring='balanced_accuracy',
-                             n_iter=n_iter, cv=cv, n_jobs=4, verbose=1)
-    rsearch = clf.fit(X, y)
-    df_rs = pd.DataFrame(rsearch.cv_results_)
-    df_rs = df_rs[[col for col in df_rs.columns if not col.startswith('split')]].sort_values('rank_test_score')
-    return rsearch.best_params_, df_rs, rsearch
 
 
 #%% Logistic Regression
@@ -269,8 +255,6 @@ forest_importances = pd.Series(importances, index=df.drop(columns='category').co
 from sklearn.neural_network import MLPClassifier
 
 
-
-
 mlp = MLPClassifier(random_state=SEED)
 df_default_mlp = valid(mlp, X, y)
 
@@ -301,13 +285,6 @@ mlp.fit(X, y)
 
 df_default_mlp
 
-#%% GaussianProcessClassifier
-from sklearn.gaussian_process import GaussianProcessClassifier
-from sklearn.gaussian_process.kernels import RBF
-
-kernel = 66**2 * RBF(1.33)
-gpc = GaussianProcessClassifier(kernel=kernel, random_state=0, multi_class='one_vs_one')
-df_default_gcp = valid(gpc, X, y)
 
 
 
