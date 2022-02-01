@@ -98,9 +98,10 @@ def get_datas(return_df=False, scaler=False, diff_gsrai=0, periods=1):
 
     # Ajusta Lags conforme correlação com o GSRAII diff
     for col in df.columns:
-        best_lag = test_lag_corr(df['GSRAII_diff'], df[col])
-        # print(f'{col} melhor lag {best_lag}')
-        df[col] = df[col].shift(best_lag)
+        if not col.startswith('pmi'):
+            best_lag = test_lag_corr(df['GSRAII_diff'], df[col])
+            # print(f'{col} melhor lag {best_lag}')
+            df[col] = df[col].shift(best_lag)
 
     df.dropna(inplace=True)
 

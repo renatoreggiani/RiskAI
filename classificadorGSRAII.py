@@ -9,8 +9,6 @@ Original file is located at
 # Importando bibliotecas
 """
 
-
-
 import pandas as pd
 import numpy as np
 
