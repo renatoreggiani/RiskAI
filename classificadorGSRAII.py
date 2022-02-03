@@ -30,10 +30,10 @@ from preprocess import get_datas
 # df_gp =  classe_gsrai(df=df_gp, limit=0, media_movel=3)
 diff_gsrai=-0.1
 
-df = get_datas(return_df=True, diff_gsrai=diff_gsrai)
+df = get_datas(return_df=True, diff_gsrai=diff_gsrai, periods=4)
 
 scaler = MinMaxScaler()
-X, y = get_datas(scaler=scaler, diff_gsrai=diff_gsrai)
+X, y = get_datas(scaler=scaler, diff_gsrai=diff_gsrai, periods=4)
 
 class_weight = {1: y[y == 0].size / y.size,
                 0: y[y == 1].size / y.size}
@@ -113,14 +113,10 @@ best_params_logr, df_rs_logr = hp_tunning(logr, params_logr)
 # sem lag 0.5466
 # com lag 0.5954
 
-# p['pca'].explained_variance_ratio_
 
-best_ft_params_logr, df_ft_logr, p = ft_selec_tunning(logr, params_logr)
+# best_ft_params_logr, df_ft_logr, p = ft_selec_tunning(logr, params_logr)
 # sem lag 0.5579
 # com lag 0.5968
-
-
-
 
 
 df_rs_logr.head()
