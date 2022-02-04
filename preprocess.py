@@ -67,7 +67,7 @@ def prep_index(df, name, set_log_diff=True):
 def test_lag_corr(y, x, n_lags=20):
 
     corrs = [x.corr(y.shift(i)) for i in range(n_lags)]
-    return np.argmax(corrs.abs())
+    return np.argmax(np.absolute(corrs))
 
 
 def get_datas(return_df=False, scaler=False, diff_gsrai=0, periods=1):
