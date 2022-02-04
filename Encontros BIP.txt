@@ -1,0 +1,121 @@
+
+1º ENCONTRO
+
+
+    Finalizar o molde de regressão
+    Criar um notebook para o projeto, deixado explicitas as análises exploratórias que vocês estão realizando
+    Voltar um pouco ao passo 3.2.3 e refinar a escolha das variáveis (envolvendo a área cliente)
+ 
+
+Abaixo um resumo do sequencial apresentado pelo Alan
+ 
+
+1 - Definição do Objetivo
+
+2 - Variavel Resposta
+
+3 - Variaveis Explicativas
+
+3.1 - Limpeza de Base - Quality
+
+3.1.1 - Tratamento valores nulos
+
+3.2 - Criação de variáveis
+
+3.2.1 - Ponto - Crua
+
+3.2.2 - Defasagens
+
+3.2.3 - Relação/Combinação Variáveis
+
+3.2.4 - Históricas - Max, Min, Média Móvel, Normalização, etc...
+
+3.2.5 - Categorização
+
+3.2.6 - Tendência
+
+4 - Estudo definição metodologia
+
+5 - Seleção de variáveis
+
+5.1 - Analise Fatorial + Information Value/PCA
+
+5.2 - Stepwise
+
+6 - Modelagem
+
+6.1 - Validação
+
+6.1.1 - Out of Time (OOT)
+
+6.1.2  - Out of Sample (OOS)
+
+6.1.3 - 3 partes / Treino/Teste/Validação
+
+7 - Validação e Ajuste Fino Modelo
+
+8 - Documentação Tecnica
+
+9 – Implantação
+
+ 
+
+ 
+
+Aproveito para deixar alguns direcionamentos para a etapa de exploração
+
+ 
+
+É impossível entender todo o conjunto de dados de uma vez. Portanto, primeiro tenha uma ideia do que você está lidando tomando um subconjunto de todo o conjunto de dados como amostra. Não faça nenhuma modificação neste estágio. Você está apenas observando o conjunto de dados e tendo uma ideia de como lidar com ele.
+
+    Qual o % de completude das variáveis?(Verifique os valores nulos (NULL))
+
+    Os casos missing são informações faltantes de forma aleatória, ou existe um motivo para a ausência?
+
+    Qual deve ser o tratamento para informações faltantes: exclusão da observação ou imputação de dados? Caso seja imputação, quais são os valores adequados (0, média, mediana, etc.)?
+
+    Verifique os tipos de dados.
+
+    Verifique o valor máximo e o valor mínimo de cada coluna.
+
+    Verifique se algum valor derivado é necessário
+
+    Verifique os valores arbitrários e Outliers. (valores que não serão úteis para a análise.) devem ser mantidos, corrigidos ou excluídos?
+
+    Qual deve ser a chave única da base?
+
+    Há casos de duplicidade? Se sim, como deve ser feita a deduplicação (informação mais recente, mais antiga, mais conversadora, etc.) ?
+
+    O preenchimento da variável está de acordo com o domínio esperado?
+
+    Verifique se há incompatibilidades de tipo de dados. Por exemplo: a moeda pode ser armazenada como uma string* em algumas linhas e um número flutuante em outras linhas.
+
+    Verifique as variações em como os valores são inseridos, principalmente em string*. Por exemplo: O nome Pedro Pereira pode ser escrito como Pedro P dentro do mesmo conjunto de dados.
+
+    Há padrão quanto ao nome de variáveis entre as bases?
+
+    Caso haja a mesma variável em mais de uma base, o preenchimento é equivalente?
+
+    O preenchimento das variáveis é estável ao longo do tempo?
+
+    Devem ser consideradas defasagens no cruzamento entre bases?
+
+ 
+
+Agora podemos pegar todo o conjunto de dados e resumir os dados como estão.
+
+Etapa 1: Visualize estatísticas resumidas, como desvio padrão, mediana e média dos valores em cada coluna
+
+Etapa 2: Plote um histograma detalhado de distribuições de valores
+
+Etapa 3: faça um gráfico de caixa para cada coluna para identificar outliers.
+
+Etapa 4: trace uma distribuição de frequência para melhor compreensão dos dados qualitativos.
+
+Etapa 5: verifique o número de colunas e linhas em relação às expectativas
+
+Lembrando que:
+
+    O número de colunas é ditado pelo número de hipóteses que você tem e pelas variáveis que você precisa para provar / refutar essas hipóteses.
+    O número de linhas é ditado pelo número de eventos que você espera no período escolhido.
+

@@ -67,7 +67,7 @@ def prep_index(df, name, set_log_diff=True):
 def test_lag_corr(y, x, n_lags=20):
 
     corrs = [x.corr(y.shift(i)) for i in range(n_lags)]
-    return np.argmax(corrs)
+    return np.argmax(corrs.abs())
 
 
 def get_datas(return_df=False, scaler=False, diff_gsrai=0, periods=1):
@@ -102,6 +102,7 @@ def get_datas(return_df=False, scaler=False, diff_gsrai=0, periods=1):
             best_lag = test_lag_corr(df['GSRAII_diff'], df[col])
             # print(f'{col} melhor lag {best_lag}')
             df[col] = df[col].shift(best_lag)
+
 
     df.dropna(inplace=True)
 
