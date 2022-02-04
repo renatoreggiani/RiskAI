@@ -66,7 +66,7 @@ X_scale = scaler.fit_transform(X)
 SEED = 51
 N_ITER =  100
 N_SPLITS = 25
-ss = StratifiedShuffleSplit(n_splits=N_SPLITS, test_size=0.25, random_state=SEED)
+ss = ShuffleSplit(n_splits=N_SPLITS, test_size=0.25, random_state=SEED)
 
 
 def valid(model, X, y, scoring='r2'):
@@ -86,28 +86,13 @@ def valid(model, X, y, scoring='r2'):
 
 def hp_tunning(model, params, random_state=SEED, n_iter=N_ITER, cv=ss):
     print(f'Testando hiperparametros para {str(model).split("(")[0]}' )
-    clf = RandomizedSearchCV(model, params, random_state=random_state, scoring='balanced_accuracy',
+    reg = RandomizedSearchCV(model, params, random_state=random_state, scoring='r2',
                              n_iter=n_iter, cv=cv, n_jobs=-1, verbose=1)
-    rsearch = clf.fit(X, y)
+    rsearch = reg.fit(X, y)
     df_rs = pd.DataFrame(rsearch.cv_results_)
     df_rs = df_rs[[col for col in df_rs.columns if not col.startswith('split')]].sort_values('rank_test_score')
     return rsearch.best_params_, df_rs
 
-
-def ft_selec_tunning(model, params, random_state=SEED, n_iter=N_ITER, cv=ss):
-
-    param_grid = {"model__"+ k:v for k,v in params.items()}
-    # param_grid = {}
-    param_grid["pca__n_components"] = np.arange(5,24,1)
-
-    # print(f'Testando hiperparametros para {str(model).split("(")[0]}' )
-    pipe = Pipeline(steps=[("pca", PCA(svd_solver='full')), ("model", model)])
-    clf = RandomizedSearchCV(pipe, param_grid, random_state=random_state, scoring='balanced_accuracy',
-                             n_iter=n_iter, cv=cv, n_jobs=4, verbose=1)
-    rsearch = clf.fit(X, y)
-    df_rs = pd.DataFrame(rsearch.cv_results_)
-    df_rs = df_rs[[col for col in df_rs.columns if not col.startswith('split')]].sort_values('rank_test_score')
-    return rsearch.best_params_, df_rs, rsearch
 
 #%% Regression Tree
 
@@ -151,6 +136,17 @@ best_alpha = ccp_alphas[test_scores.index(melhor_score)]
 
 
 df_regrTree = valid(DecisionTreeRegressor(ccp_alpha=best_alpha), X, y)
+
+LinearRegression().get_params().keys()
+
+params_regr = {
+    #'solver': ['liblinear', 'newton-cg', 'lbfgs', 'sag', 'saga'],
+    # 'penalty':['l2'],
+    #'C': range(100, 301, 5),
+    #'max_iter':range(500, 2001, 100),
+    }
+
+best_ft_params_regr, df_rs = hp_tunning(LinearRegression(), params_regr)
 
        
 #%% Logistic Regression
