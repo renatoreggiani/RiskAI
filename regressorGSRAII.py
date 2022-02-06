@@ -158,6 +158,8 @@ lin_reg_model = LinearRegression()  # Define o algoritmo a ser utilizado
 
 lin_reg_scoring = 'r2'  # Define o "score" a ser utilizado
 
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+
 # Criando as opções de parâmetros a serem testadas
 lin_reg_params = {
     'fit_intercept': [True, False],
@@ -168,15 +170,20 @@ lin_reg_params = {
     }
 
 # Testando os parâmetros
-lin_reg_best_params, df_rs = hp_tunning(lin_reg_model, lin_reg_params, X=X,
-                                        y=y, scoring=lin_reg_scoring)
+lin_reg_best_params, df_rs = hp_tunning(lin_reg_model, lin_reg_params,
+                                        X=X_train, y=y_train,
+                                        scoring=lin_reg_scoring)
 
 # Atribuindo os melhores parâmetros
 lin_reg_model = LinearRegression().set_params(**lin_reg_best_params)
 
 # Testando o modelo com os melhores parâmetros
-lin_reg_results = valid(lin_reg_model, X=X, y=y, scoring=lin_reg_scoring)
+lin_reg_results = valid(lin_reg_model, X=X_train, y=y_train,
+                        scoring=lin_reg_scoring)
 
+lin_reg_model.fit(X_train, y_train)
+
+lin_reg_model.score(X_test, y_test)
 
 #%% Logistic Regression
 
