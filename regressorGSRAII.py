@@ -39,7 +39,7 @@ from preprocess import get_datas
 #%% Semanal
 
 # df_gp =  classe_gsrai(df=df_gp, limit=0, media_movel=3)
-diff_gsrai=-0.1
+diff_gsrai = -0.1
 
 scaler = MinMaxScaler()
 
@@ -47,7 +47,7 @@ df = get_datas(return_df=True, diff_gsrai=diff_gsrai)
 
 # 'GSRAII Index' como variável dependente
 df['y'] = df['GSRAII Index'].shift(-1)
-df.dropna(inplace = True)
+df.dropna(inplace=True)
 X = df.drop(columns=['GSRAII_diff', 'category', 'y'])
 
 # 'GSRAII_diff' como variável dependente
@@ -59,19 +59,20 @@ y = df['y']
 
 scaler.fit(X)
 
-X_scale = scaler.fit_transform(X)
+X = scaler.fit_transform(X)
 
 #%% Funções e seed para os modelos
 
 SEED = 51
-N_ITER =  100
+N_ITER = 100
 N_SPLITS = 25
 ss = ShuffleSplit(n_splits=N_SPLITS, test_size=0.25, random_state=SEED)
 
 
 def valid(model, X, y, scoring='r2'):
     ss_valid = ShuffleSplit(n_splits=N_SPLITS, test_size=0.2, random_state=666)
-    scores = cross_val_score(model, X, y, cv=ss_valid, n_jobs=-1)
+    scores = cross_val_score(model, X, y, cv=ss_valid, n_jobs=-1,
+                             scoring=scoring)
     results = {
         'Modelo': str(model).split('(')[0],
         'Media': scores.mean(),
@@ -82,15 +83,17 @@ def valid(model, X, y, scoring='r2'):
     }
     return pd.DataFrame([results])
 
-###### Testado até aqui #########
 
-def hp_tunning(model, params, random_state=SEED, n_iter=N_ITER, cv=ss):
-    print(f'Testando hiperparametros para {str(model).split("(")[0]}' )
-    reg = RandomizedSearchCV(model, params, random_state=random_state, scoring='r2',
-                             n_iter=n_iter, cv=cv, n_jobs=-1, verbose=1)
+def hp_tunning(model, params, X, y, random_state=SEED, n_iter=N_ITER,
+               cv=ss, scoring='r2'):
+    print(f'Testando hiperparametros para {str(model).split("(")[0]}')
+    reg = RandomizedSearchCV(model, params, random_state=random_state,
+                             scoring=scoring, n_iter=n_iter, cv=cv,
+                             n_jobs=-1, verbose=1)
     rsearch = reg.fit(X, y)
     df_rs = pd.DataFrame(rsearch.cv_results_)
-    df_rs = df_rs[[col for col in df_rs.columns if not col.startswith('split')]].sort_values('rank_test_score')
+    df_rs = df_rs[[col for col in df_rs.columns if not col.startswith('split')]
+                  ].sort_values('rank_test_score')
     return rsearch.best_params_, df_rs
 
 
@@ -148,7 +151,33 @@ params_regr = {
 
 best_ft_params_regr, df_rs = hp_tunning(LinearRegression(), params_regr)
 
-       
+
+#%% Linear Regression
+
+lin_reg_model = LinearRegression()  # Define o algoritmo a ser utilizado
+
+lin_reg_scoring = 'r2'  # Define o "score" a ser utilizado
+
+# Criando as opções de parâmetros a serem testadas
+lin_reg_params = {
+    'fit_intercept': [True, False],
+    'normalize': [True, False],
+    'copy_X': [True, False],
+    'n_jobs': range(1, 101),
+    'positive': [True, False]
+    }
+
+# Testando os parâmetros
+lin_reg_best_params, df_rs = hp_tunning(lin_reg_model, lin_reg_params, X=X,
+                                        y=y, scoring=lin_reg_scoring)
+
+# Atribuindo os melhores parâmetros
+lin_reg_model = LinearRegression().set_params(**lin_reg_best_params)
+
+# Testando o modelo com os melhores parâmetros
+lin_reg_results = valid(lin_reg_model, X=X, y=y, scoring=lin_reg_scoring)
+
+
 #%% Logistic Regression
 
 logr = LogisticRegression()
