@@ -1,3 +1,18 @@
 
 __pycache__/preprocess.cpython-39.pyc
-__pycache__/preprocess.cpython-37.pyc
+.ipynb_checkpoints/autoEDA-checkpoint.ipynb
+AutoViz_Plots/y/.ipynb_checkpoints/Bar_Plots_Pivots-checkpoint.svg
+AutoViz_Plots/y/.ipynb_checkpoints/Dist_Plots_Cats-checkpoint.svg
+AutoViz_Plots/y/.ipynb_checkpoints/Dist_Plots_Numeric-checkpoint.svg
+AutoViz_Plots/y/.ipynb_checkpoints/Heat_Maps-checkpoint.svg
+AutoViz_Plots/y/.ipynb_checkpoints/Pair_Scatter_Plots-checkpoint.svg
+AutoViz_Plots/y/Bar_Plots_Pivots.jpg
+AutoViz_Plots/y/Dist_Plots_Cats.jpg
+AutoViz_Plots/y/Dist_Plots_Numeric.jpg
+AutoViz_Plots/y/Heat_Maps.jpg
+AutoViz_Plots/y/Pair_Scatter_Plots.jpg
+AutoViz_Plots/y/Scatter_Plots.jpg
+AutoViz_Plots/y/Violin_Plots_1_.jpg
+AutoViz_Plots/y/Violin_Plots_2_.jpg
+AutoViz_Plots/y/Violin_Plots_3_.jpg
+regressorGSRAII.py
