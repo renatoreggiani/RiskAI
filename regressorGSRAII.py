@@ -99,57 +99,42 @@ def hp_tunning(model, params, X, y, random_state=SEED, n_iter=N_ITER,
 
 #%% Regression Tree
 
+#X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+
 regressionTree = DecisionTreeRegressor(random_state=0)
 
 df_regrTree = valid(regressionTree, X, y)
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
 
-path = regressionTree.cost_complexity_pruning_path(X_train, y_train) # determina valores de aplha
+path = regressionTree.cost_complexity_pruning_path(X, y) # determina valores de aplha
 ccp_alphas = path.ccp_alphas # extrai diferentes valores de alpha
 ccp_alphas  = ccp_alphas[:-1] # exclui o valor máximo de alpha, pois este teria apenas um nó
 
-regressionTrees = [] # cria um array para colocar as Árvores de Regressão
+alpha_loop_values = [] # cria um array para colocar as Árvores de Regressão
 
 # Cria uma Árvore de Regressão para cada valor de alpha
 for ccp_alpha in ccp_alphas:
     regressionTree = DecisionTreeRegressor(random_state=0, ccp_alpha=ccp_alpha)
-    regressionTree.fit(X_train, y_train)
-    regressionTrees.append(regressionTree)
+    scores_rt = cross_val_score(regressionTree, X, y, cv=5)
+    alpha_loop_values.append([ccp_alpha, np.mean(scores_rt), np.std(scores_rt)])
 
-# Para evitar overfitting, criaremos uma base de treino e de teste para buscar o valor
-# "ótimo"de alpha (ver o gráfico gerado)
-train_scores = [regressionTree.score(X_train, y_train) for regressionTree in regressionTrees]
-test_scores = [regressionTree.score(X_test, y_test) for regressionTree in regressionTrees]
 
-fig, ax = plt.subplots()
-ax.set_xlabel("alpha")
-ax.set_ylabel("R2")
-ax.set_title("R2 vs Alpha")
-ax.plot(ccp_alphas, train_scores, marker='o', label='train', drawstyle="steps-post")
-ax.plot(ccp_alphas, test_scores, marker='o', label='test', drawstyle="steps-post")
-ax.legend()
-plt.show()
+alpha_results = pd.DataFrame(alpha_loop_values,
+                             columns=['alpha', 'acurária média', 'std'])
+
+alpha_results.plot(x='alpha',
+                   y='acurária média',
+                   yerr='std',
+                   marker='o',
+                   linestyle='--')
+
 
 # Extrai o melhor R2 da base de treino
-melhor_score = max(test_scores)
+melhor_score_generalizado = max(alpha_results['acurária média'])
 
-# Extrai o valor do alpha
-best_alpha = ccp_alphas[test_scores.index(melhor_score)]
-
+best_alpha = alpha_results[alpha_results['acurária média']==melhor_score_generalizado]['alpha'].item()
 
 df_regrTree = valid(DecisionTreeRegressor(ccp_alpha=best_alpha), X, y)
-
-LinearRegression().get_params().keys()
-
-params_regr = {
-    #'solver': ['liblinear', 'newton-cg', 'lbfgs', 'sag', 'saga'],
-    # 'penalty':['l2'],
-    #'C': range(100, 301, 5),
-    #'max_iter':range(500, 2001, 100),
-    }
-
-best_ft_params_regr, df_rs = hp_tunning(LinearRegression(), params_regr)
 
 
 #%% Linear Regression
