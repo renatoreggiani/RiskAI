@@ -21,13 +21,6 @@ def get_acwi():
         df.rename(columns={df.columns[1]: df.columns[1].split()[0].lower()}, inplace=True)
         df.dropna(inplace=True)
         df.sort_values('Date', inplace=True)
-
-        # df['year_week'] = df['Date'].dt.strftime('%Y-%U')
-        # df = df.groupby('year_week').agg('last').reset_index()
-
-        # # df['acwi_pct_change'] = df['acwi'].pct_change()
-        # df['acwi_log_diff'] = np.log(df['acwi']/df['acwi'].shift(1))
-        # df = df.drop(columns=['Date', 'acwi']).set_index('year_week')
         df.to_csv('dados\ACWI.csv', index=False)
 
         return df
@@ -44,6 +37,7 @@ def get_pmi_us_classified():
     df['pmi_us_lt_50_up'] = np.where((df['PMI'] > mean_3m) & (df['PMI'] < 50), 1, 0)
     df['pmi_us_lt_50_down'] = np.where((df['PMI'] < mean_3m) & (df['PMI'] < 50), 1, 0)
     df = df.drop(columns=['Date', 'PMI']).set_index('year_week')
+
     return df
 
 
@@ -64,11 +58,8 @@ def get_fred(ticker):
 
 def get_sp500():
     df = pdr.get_data_fred('SP500',  start='1996-01-01', end='2021-12-10').dropna()
-
     df.sort_index(inplace=True)
     df['Date'] = df.index
-    # df['year_week'] = df.index.strftime('%Y-%U')
-    # df = df.groupby('year_week').agg('last')
 
     return df
 
@@ -78,17 +69,14 @@ def get_quandl(id_quandl, curve_diff=None):
 
     if curve_diff:
         if len(curve_diff) == 2:
-            col_name = f'{id_quandl}: {"-".join(curve_diff)}'
+            col_name = f'{id_quandl}_{"-".join(curve_diff)}'
             df[col_name] = df[curve_diff[0]] - df[curve_diff[1]]
             df = df[[col_name]]
         else:
             raise 'Diferença deve ser calculada com 2 pontos'
 
     df['year_week'] = df.index.strftime('%Y-%U')
-    df = df.groupby('year_week').agg('last')#.reset_index()
+    df = df.groupby('year_week').agg('last')
 
     return df
-
-
-#%%
 

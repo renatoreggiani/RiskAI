@@ -15,10 +15,10 @@ from captura import get_acwi, get_fred, get_pmi_us_classified, get_quandl, get_s
 
 def classe_gsrai(df, up_down=0, limit=0):
 
-    df['gsrai_gt_up'] = np.where((df['GSRAII_diff'] > up_down) & (df['GSRAII Index'] >= limit), 1, 0)
-    df['gsrai_gt_down'] = np.where((df['GSRAII_diff'] < up_down) & (df['GSRAII Index'] >= limit), 1, 0)
-    df['gsrai_lt_up'] = np.where((df['GSRAII_diff'] > up_down) & (df['GSRAII Index'] < limit), 1, 0)
-    df['gsrai_lt_down'] = np.where((df['GSRAII_diff'] < up_down) & (df['GSRAII Index'] < limit), 1, 0)
+    df['gsrai_gt_up'] = np.where((df['GSRAII_diff'] > up_down) & (df['GSRAII'] >= limit), 1, 0)
+    df['gsrai_gt_down'] = np.where((df['GSRAII_diff'] < up_down) & (df['GSRAII'] >= limit), 1, 0)
+    df['gsrai_lt_up'] = np.where((df['GSRAII_diff'] > up_down) & (df['GSRAII'] < limit), 1, 0)
+    df['gsrai_lt_down'] = np.where((df['GSRAII_diff'] < up_down) & (df['GSRAII'] < limit), 1, 0)
 
     regras = ['gsrai_gt_up', 'gsrai_gt_down', 'gsrai_lt_up', 'gsrai_lt_down']
     df['classe'] = np.nan
@@ -32,12 +32,12 @@ def get_gsrai(up_down=0, diff_gsrai=0, limit=0, periods=1):
     df = pd.read_csv('dados/GSRAII.csv', parse_dates=['Date']).sort_values('Date')
     df['year_week'] = df['Date'].dt.strftime('%Y-%U')
     # add indicadores
-    df['150 std gsraii'] = df['GSRAII Index'].rolling(150).std()
-    df['21 std gsraii'] = df['GSRAII Index'].rolling(21).std()
+    df['gsraii_std_150'] = df['GSRAII'].rolling(150).std()
+    df['gsraii_std_21'] = df['GSRAII'].rolling(21).std()
 
     df = df.groupby('year_week').agg('last')
     df.drop(columns='Date', inplace=True)
-    df['GSRAII_diff'] = df['GSRAII Index'].diff(periods)
+    df['GSRAII_diff'] = df['GSRAII'].diff(periods)
     # df = classe_gsrai(df)
     future_diff = df['GSRAII_diff'].shift(-periods)
     df['category'] = np.where(future_diff < diff_gsrai, 1, 0)
@@ -59,7 +59,7 @@ def prep_index(df, name, set_log_diff=True):
         df[f'{name}_log_diff'] = np.log(df[f'{name}']/df[f'{name}'].shift(1))
         df.drop(columns=[f'{name}'], inplace=True)
 
-    df.dropna(inplace=True)
+    # df.dropna(inplace=True)
 
     return df
 
@@ -75,8 +75,8 @@ def get_datas(return_df=False, scaler=False, diff_gsrai=0, periods=1):
     try:
         df = pd.read_csv('dados/Capturas.csv', index_col='year_week')
     except FileNotFoundError:
-        series_fred = ['FEDFUNDS', 'CPALTT01USM657N', 'VIXCLS', 'DGS10', 'AAA10Y',
-                       'BAMLH0A0HYM2EY', 'GEPUCURRENT',  'DGS3MO', 'VXDCLS']
+        series_fred = ['CPALTT01USM657N', 'VIXCLS', 'DGS10', 'AAA10Y',
+                       'BAMLH0A0HYM2EY', 'GEPUCURRENT',  'DGS3MO']
         df_fred = get_fred(series_fred)
         df_acwi = prep_index(get_acwi(), 'acwi')
         # df_sp500 = prep_index(get_sp500(), 'SP500')
