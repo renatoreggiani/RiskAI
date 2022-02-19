@@ -14,8 +14,10 @@ Original file is located at
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import graphviz
 
 from sklearn.tree import DecisionTreeRegressor
+from sklearn import tree
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.feature_selection import f_regression
@@ -35,6 +37,9 @@ from sklearn.pipeline import Pipeline
 
 from preprocess import get_datas
 
+from statsmodels.graphics.tsaplots import plot_acf
+
+
 
 #%% Semanal
 
@@ -46,9 +51,11 @@ scaler = MinMaxScaler()
 df = get_datas(return_df=True, diff_gsrai=diff_gsrai)
 
 # 'GSRAII Index' como variável dependente
-df['y'] = df['GSRAII Index'].shift(-1)
+df['y'] = df['GSRAII_diff'].shift(-1)
 df.dropna(inplace=True)
 X = df.drop(columns=['GSRAII_diff', 'category', 'y'])
+
+colunas_x = df.drop(columns=['GSRAII_diff', 'category', 'y']).columns
 
 # 'GSRAII_diff' como variável dependente
 # df['y'] = df['GSRAII_diff'].shift(-1)
@@ -99,8 +106,6 @@ def hp_tunning(model, params, X, y, random_state=SEED, n_iter=N_ITER,
 
 #%% Regression Tree
 
-#X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
-
 regressionTree = DecisionTreeRegressor(random_state=0)
 
 df_regrTree = valid(regressionTree, X, y)
@@ -135,6 +140,32 @@ melhor_score_generalizado = max(alpha_results['acurária média'])
 best_alpha = alpha_results[alpha_results['acurária média']==melhor_score_generalizado]['alpha'].item()
 
 df_regrTree = valid(DecisionTreeRegressor(ccp_alpha=best_alpha), X, y)
+
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+reg = DecisionTreeRegressor(ccp_alpha=best_alpha,random_state=0)
+reg.fit(X_train,y_train)
+
+dot_data = tree.export_graphviz(reg, out_file=None, feature_names=colunas_x,
+                                filled=True)
+
+# Draw graph
+graph = graphviz.Source(dot_data, format="png") 
+graph
+
+
+reg.score(X_test, y_test)
+
+d = {'fitted' : reg.predict(X_test),
+     'y_test' : y_test}
+
+df_teste_regrTree = pd.DataFrame(d)
+
+df_teste_regrTree.plot(style=['o','rx'])
+
+x = df['GSRAII_diff']
+
+plot_acf(x, lags=500)
 
 
 #%% Linear Regression
