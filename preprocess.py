@@ -8,7 +8,7 @@ Created on Mon Sep  6 22:13:19 2021
 import pandas as pd
 import numpy as np
 
-from captura import get_acwi, get_fred, get_pmi_us_classified, get_quandl, get_sp500
+from captura import get_acwi, get_fred, get_quandl, get_sp500, get_dxy
 
 #%% Captura dos dados
 
@@ -25,6 +25,20 @@ def classe_gsrai(df, up_down=0, limit=0):
     for col in regras:
         df.loc[df[col]==1, 'classe'] = col
     return df.dropna()
+
+
+def classe_pmi(df):
+    df = df.copy()
+    # df['year_week'] = df['Date'].dt.strftime('%Y-%U')
+    mean_3m = df['PMI'].rolling(3).mean()
+
+    df['pmi_us_gt_50_up'] = np.where((df['PMI'] > mean_3m) & (df['PMI'] >=50), 1, 0)
+    df['pmi_us_gt_50_down'] = np.where((df['PMI'] < mean_3m) & (df['PMI'] >=50), 1, 0)
+    df['pmi_us_lt_50_up'] = np.where((df['PMI'] > mean_3m) & (df['PMI'] < 50), 1, 0)
+    df['pmi_us_lt_50_down'] = np.where((df['PMI'] < mean_3m) & (df['PMI'] < 50), 1, 0)
+    df = df.drop(columns=['PMI'])
+    
+    return df
 
 
 def get_gsrai(up_down=0, diff_gsrai=0, limit=0, periods=1):
@@ -47,22 +61,24 @@ def get_gsrai(up_down=0, diff_gsrai=0, limit=0, periods=1):
 
 def prep_index(df, name, set_log_diff=True):
 
-    df.sort_values('Date', inplace=True)
-    for d in [21, 150]:
+    # df.sort_values('Date', inplace=True)
+    for d in range(5, 25, 10):
         df[f'std_{d}_{name}'] = df[f'{name}'].rolling(d).std()
+        df[f'mean_{d}_{name}'] = df[f'{name}'].rolling(d).std()
 
     df['year_week'] = df['Date'].dt.strftime('%Y-%U')
     df = df.groupby('year_week').agg('last').reset_index()
     df = df.drop(columns=['Date']).set_index('year_week')
 
     if set_log_diff:
-        df[f'{name}_log_diff'] = np.log(df[f'{name}']/df[f'{name}'].shift(1))
-        df.drop(columns=[f'{name}'], inplace=True)
+        for col in df.columns:
+            df[f'{col}_log_diff'] = np.log(df[f'{col}']/df[f'{col}'].shift(1))
+            df.drop(columns=[f'{col}'], inplace=True)
 
     # df.dropna(inplace=True)
 
     return df
-
+    
 
 def test_lag_corr(y, x, n_lags=20):
 
@@ -73,20 +89,21 @@ def test_lag_corr(y, x, n_lags=20):
 def get_datas(return_df=False, scaler=False, diff_gsrai=0, periods=1):
 
     try:
-        df = pd.read_csv('dados/Capturas.csv', index_col='year_week')
+        df = pd.read_csv('dados/Capturas1.csv', index_col='year_week')
     except FileNotFoundError:
         series_fred = ['CPALTT01USM657N', 'VIXCLS', 'DGS10', 'AAA10Y',
                        'BAMLH0A0HYM2EY', 'GEPUCURRENT',  'DGS3MO']
         df_fred = get_fred(series_fred)
         df_acwi = prep_index(get_acwi(), 'acwi')
         # df_sp500 = prep_index(get_sp500(), 'SP500')
-        df_pmi = get_pmi_us_classified()
+        df_pmi = classe_pmi(get_quandl('ISM/MAN_PMI'))
+        df_dxy = prep_index(get_dxy(), 'dxy')
         df_quandl = pd.concat([
-            get_quandl("ML/EMCBI"),
+            get_quandl('ML/EMCBI'),
             get_quandl('USTREASURY/HQMYC', curve_diff=('10.0', '20.0')),
             get_quandl('USTREASURY/YIELD', curve_diff=('10 YR', '20 YR')),
             ], join='outer', axis=1)
-        df = pd.concat([df_fred, df_acwi, df_pmi, df_quandl, ],
+        df = pd.concat([df_fred, df_acwi, df_pmi, df_quandl, df_dxy],
                        join='outer', axis=1).sort_index()
         df.to_csv('dados/Capturas.csv')
 

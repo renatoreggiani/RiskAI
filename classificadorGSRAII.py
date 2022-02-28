@@ -30,10 +30,10 @@ from preprocess import get_datas
 # df_gp =  classe_gsrai(df=df_gp, limit=0, media_movel=3)
 diff_gsrai=-0.1
 
-df = get_datas(return_df=True, diff_gsrai=diff_gsrai, periods=4)
+df = get_datas(return_df=True, diff_gsrai=diff_gsrai, periods=1)
 
 scaler = MinMaxScaler()
-X, y = get_datas(scaler=scaler, diff_gsrai=diff_gsrai, periods=4)
+X, y = get_datas(scaler=scaler, diff_gsrai=diff_gsrai, periods=1)
 
 class_weight = {1: y[y == 0].size / y.size,
                 0: y[y == 1].size / y.size}

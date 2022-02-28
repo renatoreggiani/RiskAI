@@ -26,22 +26,16 @@ def get_acwi():
         return df
 
 
-def get_pmi_us_classified():
-    df = pd.read_csv('https://www.quandl.com/api/v3/datasets/ISM/MAN_PMI.csv?api_key=Mw-vW_dxkPHHfjxjAQsF',
-                            parse_dates=['Date']).sort_values('Date')
-    df['year_week'] = df['Date'].dt.strftime('%Y-%U')
-    mean_3m = df['PMI'].rolling(3).mean()
-
-    df['pmi_us_gt_50_up'] = np.where((df['PMI'] > mean_3m) & (df['PMI'] >=50), 1, 0)
-    df['pmi_us_gt_50_down'] = np.where((df['PMI'] < mean_3m) & (df['PMI'] >=50), 1, 0)
-    df['pmi_us_lt_50_up'] = np.where((df['PMI'] > mean_3m) & (df['PMI'] < 50), 1, 0)
-    df['pmi_us_lt_50_down'] = np.where((df['PMI'] < mean_3m) & (df['PMI'] < 50), 1, 0)
-    df = df.drop(columns=['Date', 'PMI']).set_index('year_week')
-
+def get_dxy():
+    df = pd.read_csv('dados/DXY.csv', parse_dates=['Date'])
+    df.dropna(inplace=True)
+    df.sort_values('Date', inplace=True)
+    df.rename(columns={df.columns[1]: df.columns[1].lower()}, inplace=True)
+    
     return df
+    
 
-
-def get_fred(ticker):
+def get_fred(ticker, start='1996-01-01', end='2021-08-10'):
     if isinstance(ticker, list):
         df = pd.concat(
         [pdr.get_data_fred(serie,  start='1996-01-01', end='2021-08-10') for serie in ticker]
@@ -65,7 +59,8 @@ def get_sp500():
 
 
 def get_quandl(id_quandl, curve_diff=None):
-    df = quandl.get(id_quandl, authtoken="Mw-vW_dxkPHHfjxjAQsF", start_date='1996-01-01').sort_index()
+    df = quandl.get(id_quandl, authtoken="Mw-vW_dxkPHHfjxjAQsF", start_date='1996-01-01')
+    df.sort_index(inplace=True)
 
     if curve_diff:
         if len(curve_diff) == 2:
