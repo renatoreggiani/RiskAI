@@ -28,7 +28,7 @@ from preprocess import get_datas
 #%% Semanal
 
 # df_gp =  classe_gsrai(df=df_gp, limit=0, media_movel=3)
-diff_gsrai=-0.1
+diff_gsrai=-0.2
 
 df = get_datas(return_df=True, diff_gsrai=diff_gsrai, periods=1)
 

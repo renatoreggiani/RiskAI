@@ -29,14 +29,14 @@ def classe_gsrai(df, up_down=0, limit=0):
 
 def classe_pmi(df):
     df = df.copy()
-    # df['year_week'] = df['Date'].dt.strftime('%Y-%U')
+    df['year_week'] = df['Date'].dt.strftime('%Y-%U')
     mean_3m = df['PMI'].rolling(3).mean()
 
     df['pmi_us_gt_50_up'] = np.where((df['PMI'] > mean_3m) & (df['PMI'] >=50), 1, 0)
     df['pmi_us_gt_50_down'] = np.where((df['PMI'] < mean_3m) & (df['PMI'] >=50), 1, 0)
     df['pmi_us_lt_50_up'] = np.where((df['PMI'] > mean_3m) & (df['PMI'] < 50), 1, 0)
     df['pmi_us_lt_50_down'] = np.where((df['PMI'] < mean_3m) & (df['PMI'] < 50), 1, 0)
-    df = df.drop(columns=['PMI'])
+    df = df.drop(columns=['PMI', 'Date']).set_index('year_week')
     
     return df
 
@@ -59,10 +59,11 @@ def get_gsrai(up_down=0, diff_gsrai=0, limit=0, periods=1):
     return df
 
 
-def prep_index(df, name, set_log_diff=True):
+def prep_index(df, set_log_diff=True):
 
-    # df.sort_values('Date', inplace=True)
-    for d in range(5, 25, 10):
+    name = df.drop(columns='Date').columns[0]
+    
+    for d in [5, 8, 13, 21, 34, 55, 89, 144]:
         df[f'std_{d}_{name}'] = df[f'{name}'].rolling(d).std()
         df[f'mean_{d}_{name}'] = df[f'{name}'].rolling(d).std()
 
@@ -72,13 +73,17 @@ def prep_index(df, name, set_log_diff=True):
 
     if set_log_diff:
         for col in df.columns:
-            df[f'{col}_log_diff'] = np.log(df[f'{col}']/df[f'{col}'].shift(1))
+            df[f'{col}_log_div'] = np.log(df[f'{col}']/df[f'{col}'].shift(1))
             df.drop(columns=[f'{col}'], inplace=True)
 
     # df.dropna(inplace=True)
 
     return df
     
+def prep_curves(df):
+    df = df.copy()
+    
+    return df
 
 def test_lag_corr(y, x, n_lags=20):
 
@@ -94,12 +99,13 @@ def get_datas(return_df=False, scaler=False, diff_gsrai=0, periods=1):
         series_fred = ['CPALTT01USM657N', 'VIXCLS', 'DGS10', 'AAA10Y',
                        'BAMLH0A0HYM2EY', 'GEPUCURRENT',  'DGS3MO']
         df_fred = get_fred(series_fred)
-        df_acwi = prep_index(get_acwi(), 'acwi')
+        df_fred = df_fred.interpolate()
+        df_acwi = prep_index(get_acwi())
         # df_sp500 = prep_index(get_sp500(), 'SP500')
         df_pmi = classe_pmi(get_quandl('ISM/MAN_PMI'))
-        df_dxy = prep_index(get_dxy(), 'dxy')
+        df_dxy = prep_index(get_dxy())
         df_quandl = pd.concat([
-            get_quandl('ML/EMCBI'),
+            prep_index(get_quandl('ML/EMCBI')),
             get_quandl('USTREASURY/HQMYC', curve_diff=('10.0', '20.0')),
             get_quandl('USTREASURY/YIELD', curve_diff=('10 YR', '20 YR')),
             ], join='outer', axis=1)
@@ -109,15 +115,14 @@ def get_datas(return_df=False, scaler=False, diff_gsrai=0, periods=1):
 
     df_gsrai = get_gsrai(diff_gsrai=diff_gsrai, periods=periods)
     # Unifica capturas
-    df = pd.concat([df, df_gsrai],
-                   join='outer', axis=1).sort_index()
+    df = pd.concat([df, df_gsrai], join='outer', axis=1).sort_index()
     df = df.ffill().dropna()
 
     # Ajusta Lags conforme correlação com o GSRAII diff
     for col in df.columns:
         if not col.startswith('pmi'):
             best_lag = test_lag_corr(df['GSRAII_diff'], df[col])
-            # print(f'{col} melhor lag {best_lag}')
+            print(f'{col} melhor lag {best_lag}')
             df[col] = df[col].shift(best_lag)
 
 

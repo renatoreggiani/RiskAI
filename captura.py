@@ -39,7 +39,7 @@ def get_fred(ticker, start='1996-01-01', end='2021-08-10'):
     if isinstance(ticker, list):
         df = pd.concat(
         [pdr.get_data_fred(serie,  start='1996-01-01', end='2021-08-10') for serie in ticker]
-        , join='outer', axis=1).ffill()
+        , join='outer', axis=1)
     else:
         df = pdr.get_data_fred(ticker,  start='1996-01-01', end='2021-12-10')
 
@@ -61,17 +61,21 @@ def get_sp500():
 def get_quandl(id_quandl, curve_diff=None):
     df = quandl.get(id_quandl, authtoken="Mw-vW_dxkPHHfjxjAQsF", start_date='1996-01-01')
     df.sort_index(inplace=True)
-
+    
     if curve_diff:
+        
         if len(curve_diff) == 2:
             col_name = f'{id_quandl}_{"-".join(curve_diff)}'
             df[col_name] = df[curve_diff[0]] - df[curve_diff[1]]
             df = df[[col_name]]
+            df['year_week'] = df.index.strftime('%Y-%U')
+            df = df.groupby('year_week').agg('last')
         else:
             raise 'Diferença deve ser calculada com 2 pontos'
+    else:
+        df.reset_index(inplace=True)
+        df.rename(columns={'DATE':'Date'}, inplace=True)
 
-    df['year_week'] = df.index.strftime('%Y-%U')
-    df = df.groupby('year_week').agg('last')
 
     return df
 
